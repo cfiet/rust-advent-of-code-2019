@@ -87,7 +87,7 @@ impl<N: Borrow<u32>, T: Iterator<Item = N>> FuelCalculator<N, T> {
     /// Calculates fuel required for modules.
     pub fn calculate_required_fuel(self) -> u32 {
         self.iter
-            .filter(|m| m > 6)
+            .filter(|m| *m.borrow() > 6)
             .map(|v| calculate_module_fuel_req(v.borrow()))
             .sum()
     }
