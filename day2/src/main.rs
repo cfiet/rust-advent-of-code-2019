@@ -1,7 +1,5 @@
-use std::borrow::BorrowMut;
 use std::clone::Clone;
 use std::fs::read_to_string;
-use std::ops::{Deref, DerefMut};
 
 static INPUT_PATH: &str = "day2/data/input.txt";
 
