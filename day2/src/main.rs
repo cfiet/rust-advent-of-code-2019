@@ -32,20 +32,22 @@ impl<Mem: BorrowMut<Vec<usize>>> Program<Mem> {
         self
     }
 
-    fn read_memory(&self, pos: usize) -> usize {
-        self.memory.borrow().deref().get(pos).unwrap().clone()
+    fn read_memory(&self, pos: &usize) -> &usize {
+        self.memory.borrow().deref().get(*pos).unwrap()
     }
 
     fn step(&mut self) -> Option<usize> {
-        let instruction = self.read_memory(self.next_instruction);
+        let instruction = self.read_memory(&self.next_instruction).clone();
         match instruction {
             99 => None,
             1 | 2 => {
-                let op = self.get_operands();
-                let a0 = self.read_memory(op.0);
-                let a1 = self.read_memory(op.1);
-                let result = if instruction == 1 { a0 + a1 } else { a0 * a1 };
-                self.memory.borrow_mut().deref_mut()[op.2] = result;
+                let (result, target) = {
+                    let op = self.get_operands();
+                    let a0 = self.read_memory(op.0);
+                    let a1 = self.read_memory(op.1);
+                    (if instruction == 1 { a0 + a1 } else { a0 * a1 }, *op.2)
+                };
+                self.memory.borrow_mut().deref_mut()[target] = result;
                 self.next_instruction += 4;
                 Some(instruction as usize)
             }
@@ -53,11 +55,11 @@ impl<Mem: BorrowMut<Vec<usize>>> Program<Mem> {
         }
     }
 
-    fn get_operands(&self) -> (usize, usize, usize) {
+    fn get_operands(&self) -> (&usize, &usize, &usize) {
         (
-            self.read_memory(self.next_instruction + 1),
-            self.read_memory(self.next_instruction + 2),
-            self.read_memory(self.next_instruction + 3),
+            self.read_memory(&(self.next_instruction + 1)),
+            self.read_memory(&(self.next_instruction + 2)),
+            self.read_memory(&(self.next_instruction + 3)),
         )
     }
 }
