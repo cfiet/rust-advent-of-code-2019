@@ -5,24 +5,24 @@ use std::ops::{Deref, DerefMut};
 
 static INPUT_PATH: &str = "day2/data/input.txt";
 
-struct Program<Mem: BorrowMut<Vec<usize>>> {
-    memory: Mem,
+struct Program<'a> {
+    memory: &'a mut Vec<usize>,
     next_instruction: usize,
 }
 
-impl<Mem: BorrowMut<Vec<usize>>> Program<Mem> {
-    fn new(memory: Mem) -> Program<Mem> {
+impl<'a> Program<'a> {
+    fn new<'b>(memory: &'b mut Vec<usize>) -> Program<'b> {
         Program {
             memory,
             next_instruction: 0,
         }
     }
 
-    fn memory(self) -> Mem {
+    fn memory(self) -> &'a Vec<usize> {
         self.memory
     }
 
-    fn run(mut self) -> Program<Mem> {
+    fn run(mut self) -> Program<'a> {
         loop {
             if self.step() == None {
                 break;
@@ -33,7 +33,7 @@ impl<Mem: BorrowMut<Vec<usize>>> Program<Mem> {
     }
 
     fn read_memory(&self, pos: &usize) -> &usize {
-        self.memory.borrow().deref().get(*pos).unwrap()
+        self.memory.get(*pos).unwrap()
     }
 
     fn step(&mut self) -> Option<usize> {
@@ -47,7 +47,7 @@ impl<Mem: BorrowMut<Vec<usize>>> Program<Mem> {
                     let a1 = self.read_memory(op.1);
                     (if instruction == 1 { a0 + a1 } else { a0 * a1 }, *op.2)
                 };
-                self.memory.borrow_mut().deref_mut()[target] = result;
+                self.memory[target] = result;
                 self.next_instruction += 4;
                 Some(instruction as usize)
             }
@@ -82,7 +82,14 @@ fn find_noun_verb(program: Vec<usize>, expected: usize) -> Option<(usize, usize)
             p2_in[1] = i;
             p2_in[2] = j;
 
-            if Program::new(p2_in).run().memory().get(0).unwrap().clone() == expected {
+            if Program::new(&mut p2_in)
+                .run()
+                .memory()
+                .get(0)
+                .unwrap()
+                .clone()
+                == expected
+            {
                 return Some((i, j));
             }
         }
@@ -96,7 +103,7 @@ fn main() {
     let mut p1_in = input.clone();
     p1_in[1] = 12;
     p1_in[2] = 2;
-    let program = Program::new(p1_in).run();
+    let program = Program::new(&mut p1_in).run();
     println!("Program output is: {}", program.memory().get(0).unwrap());
 
     let pair = find_noun_verb(input, 19690720).unwrap();
