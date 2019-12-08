@@ -1,15 +1,32 @@
 use std::borrow::Borrow;
+use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::fmt::Debug;
 
 pub struct Program<'a> {
     memory: &'a mut [i32],
     next_op: usize,
+    input: VecDeque<i32>,
+    output: Vec<i32>,
 }
 
 impl<'a> Program<'a> {
     pub fn new<'b>(memory: &'b mut [i32]) -> Program<'b> {
-        Program { memory, next_op: 0 }
+        Program {
+            memory,
+            next_op: 0,
+            input: VecDeque::new(),
+            output: Vec::new(),
+        }
+    }
+
+    pub fn add_input(mut self, input: &[i32]) -> Self {
+        input.iter().for_each(|v| self.input.push_back(*v));
+        self
+    }
+
+    pub fn output<'b>(&'b self) -> &'b [i32] {
+        &self.output
     }
 
     fn read_at(&self, pos: usize) -> i32 {
@@ -40,6 +57,40 @@ impl<'a> Program<'a> {
                     Param::Position(target) => Ok(Op::Mul((left, right, target))),
                 }
             }
+            3 => match self.parse_param(1, opcode.arg0)? {
+                Param::Immediate(_) => Err(ImmediateTargetParam(1)),
+                Param::Position(target) => Ok(Op::Input(target)),
+            },
+            4 => {
+                let value = self.parse_param(1, opcode.arg0)?;
+                Ok(Op::Output(value))
+            }
+            5 => {
+                let condition = self.parse_param(1, opcode.arg0)?;
+                let value = self.parse_param(2, opcode.arg1)?;
+                Ok(Op::JumpIfTrue((condition, value)))
+            }
+            6 => {
+                let condition = self.parse_param(1, opcode.arg0)?;
+                let value = self.parse_param(2, opcode.arg1)?;
+                Ok(Op::JumpIfFalse((condition, value)))
+            }
+            7 => {
+                let left = self.parse_param(1, opcode.arg0)?;
+                let right = self.parse_param(2, opcode.arg1)?;
+                match self.parse_param(3, opcode.arg2)? {
+                    Param::Immediate(_) => Err(ImmediateTargetParam(3)),
+                    Param::Position(target) => Ok(Op::LessThan((left, right, target))),
+                }
+            }
+            8 => {
+                let left = self.parse_param(1, opcode.arg0)?;
+                let right = self.parse_param(2, opcode.arg1)?;
+                match self.parse_param(3, opcode.arg2)? {
+                    Param::Immediate(_) => Err(ImmediateTargetParam(3)),
+                    Param::Position(target) => Ok(Op::Equals((left, right, target))),
+                }
+            }
             _ => Err(UnrecognisedOpCode(opcode.op)),
         }
     }
@@ -67,7 +118,7 @@ impl<'a> Program<'a> {
         }
     }
 
-    fn step(&mut self) -> Option<usize> {
+    fn step(&mut self) -> Instruction {
         let op = self
             .parse_op()
             .unwrap_or_else(|e| panic!("Error while running op at {}: {:?}", self.next_op, e));
@@ -77,30 +128,78 @@ impl<'a> Program<'a> {
                 let left = self.read_param(p0);
                 let right = self.read_param(p1);
                 self.memory[*dest] = left + right;
+                Instruction::Increase(op.size().unwrap())
             }
             Op::Mul((p0, p1, dest)) => {
                 let left = self.read_param(p0);
                 let right = self.read_param(p1);
                 self.memory[*dest] = left * right;
+                Instruction::Increase(op.size().unwrap())
             }
-            _ => {}
-        };
+            Op::Input(dest) => match self.input.pop_front() {
+                Some(input) => {
+                    self.memory[*dest] = input;
+                    Instruction::Increase(op.size().unwrap())
+                }
+                _ => panic!("Expected input, but it's empty!"),
+            },
+            Op::Output(src) => {
+                let value = self.read_param(src);
+                self.output.push(value);
+                Instruction::Increase(op.size().unwrap())
+            }
+            Op::JumpIfTrue((p0, target)) => {
+                if self.read_param(p0) > 0 {
+                    Instruction::GoTo(self.read_param(target) as usize)
+                } else {
+                    Instruction::Increase(op.size().unwrap())
+                }
+            }
+            Op::JumpIfFalse((p0, target)) => {
+                if self.read_param(p0) == 0 {
+                    Instruction::GoTo(self.read_param(target) as usize)
+                } else {
+                    Instruction::Increase(op.size().unwrap())
+                }
+            }
+            Op::LessThan((p0, p1, target)) => {
+                let left = self.read_param(p0);
+                let right = self.read_param(p1);
 
-        let jmp = op.size();
-        self.next_op += jmp.unwrap_or(0);
+                self.memory[*target] = if left < right { 1 } else { 0 };
 
-        jmp
+                Instruction::Increase(op.size().unwrap())
+            }
+            Op::Equals((p0, p1, target)) => {
+                let left = self.read_param(p0);
+                let right = self.read_param(p1);
+
+                self.memory[*target] = if left == right { 1 } else { 0 };
+
+                Instruction::Increase(op.size().unwrap())
+            }
+            Op::Terminate => Instruction::Stop,
+        }
     }
 
     pub fn run(mut self) -> Program<'a> {
         'main: loop {
-            if self.step() == None {
-                break 'main;
+            match self.step() {
+                Instruction::Increase(val) => self.next_op += val,
+                Instruction::GoTo(instr) => self.next_op = instr,
+                Instruction::Stop => break,
             }
         }
 
         self
     }
+}
+
+#[derive(Debug)]
+enum Instruction {
+    Increase(usize),
+    GoTo(usize),
+    Stop,
 }
 
 #[derive(Debug)]
@@ -116,14 +215,19 @@ enum Op {
     Add((Param, Param, usize)),
     Mul((Param, Param, usize)),
     Input(usize),
-    Output(usize),
+    Output(Param),
+    JumpIfTrue((Param, Param)),
+    JumpIfFalse((Param, Param)),
+    LessThan((Param, Param, usize)),
+    Equals((Param, Param, usize)),
     Terminate,
 }
 
 impl Op {
     fn size(&self) -> Option<usize> {
         match self {
-            Op::Add(_) | Op::Mul(_) => Some(4),
+            Op::Add(_) | Op::Mul(_) | Op::LessThan(_) | Op::Equals(_) => Some(4),
+            Op::JumpIfTrue(_) | Op::JumpIfFalse(_) => Some(3),
             Op::Input(_) | Op::Output(_) => Some(2),
             Op::Terminate => None,
         }
@@ -289,5 +393,69 @@ mod tests {
             6,
             "Invalid mul value in memory position 3"
         );
+    }
+
+    #[test]
+    fn check_simple_input_program() {
+        let mut mem = vec![3, 1, 99];
+        Program::new(&mut mem).add_input(&vec![1024]).run();
+        assert_eq!(
+            *mem.get(1).unwrap(),
+            1024,
+            "Expected inputed value in memory position 1"
+        );
+    }
+
+    #[test]
+    fn check_simple_output() {
+        let mut mem = vec![104, 1024, 99];
+        let p = Program::new(&mut mem).run();
+        assert_eq!(
+            p.output(),
+            &[1024],
+            "Expected inputed value in memory position 1"
+        );
+    }
+
+    #[test]
+    fn check_simple_jump_if_true() {
+        let mut mem = vec![1105, 1, 5, 104, 1, 99];
+        let p = Program::new(&mut mem).run();
+        assert_eq!(p.output(), &[], "Expected output to be empty");
+    }
+
+    #[test]
+    fn check_simple_jump_if_false() {
+        let mut mem = vec![1106, 0, 5, 104, 1, 99];
+        let p = Program::new(&mut mem).run();
+        assert_eq!(p.output(), &[], "Expected output to be empty");
+    }
+
+    #[test]
+    fn check_simple_less_than_when_true() {
+        let mut mem = vec![1107, 0, 1, 1, 99];
+        Program::new(&mut mem).run();
+        assert_eq!(mem, &[1107, 1, 1, 1, 99], "Expected output to be empty");
+    }
+
+    #[test]
+    fn check_simple_less_than_when_false() {
+        let mut mem = vec![1107, 1, 1, 1, 99];
+        Program::new(&mut mem).run();
+        assert_eq!(mem, &[1107, 0, 1, 1, 99], "Expected output to be empty");
+    }
+
+    #[test]
+    fn check_simple_equals_when_true() {
+        let mut mem = vec![1108, 0, 0, 1, 99];
+        Program::new(&mut mem).run();
+        assert_eq!(mem, &[1108, 1, 0, 1, 99], "Expected output to be empty");
+    }
+
+    #[test]
+    fn check_simple_equals_when_false() {
+        let mut mem = vec![1108, 1, 0, 1, 99];
+        Program::new(&mut mem).run();
+        assert_eq!(mem, &[1108, 0, 0, 1, 99], "Expected output to be empty");
     }
 }
