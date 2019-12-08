@@ -1,93 +1,31 @@
 use std::clone::Clone;
 use std::fs::read_to_string;
 
+use intcode::Program;
+
 static INPUT_PATH: &str = "day2/data/input.txt";
 
-struct Program<'a> {
-    memory: &'a mut Vec<usize>,
-    next_instruction: usize,
-}
-
-impl<'a> Program<'a> {
-    fn new<'b>(memory: &'b mut Vec<usize>) -> Program<'b> {
-        Program {
-            memory,
-            next_instruction: 0,
-        }
-    }
-
-    fn memory(self) -> &'a Vec<usize> {
-        self.memory
-    }
-
-    fn run(mut self) -> Program<'a> {
-        loop {
-            if self.step() == None {
-                break;
-            }
-        }
-
-        self
-    }
-
-    fn read_memory(&self, pos: &usize) -> &usize {
-        self.memory.get(*pos).unwrap()
-    }
-
-    fn step(&mut self) -> Option<usize> {
-        let instruction = self.read_memory(&self.next_instruction).clone();
-        match instruction {
-            99 => None,
-            1 | 2 => {
-                let (result, target) = {
-                    let op = self.get_operands();
-                    let a0 = self.read_memory(op.0);
-                    let a1 = self.read_memory(op.1);
-                    (if instruction == 1 { a0 + a1 } else { a0 * a1 }, *op.2)
-                };
-                self.memory[target] = result;
-                self.next_instruction += 4;
-                Some(instruction as usize)
-            }
-            _ => panic!("Unknown operant: {}", instruction),
-        }
-    }
-
-    fn get_operands(&self) -> (&usize, &usize, &usize) {
-        (
-            self.read_memory(&(self.next_instruction + 1)),
-            self.read_memory(&(self.next_instruction + 2)),
-            self.read_memory(&(self.next_instruction + 3)),
-        )
-    }
-}
-
-fn read_input() -> Vec<usize> {
+fn read_input() -> Vec<i32> {
     read_to_string(INPUT_PATH)
         .unwrap_or_else(|e| panic!("Error reading file {}: {}", INPUT_PATH, e))
         .split(",")
         .map(|s| {
-            s.parse::<usize>()
+            s.parse::<i32>()
                 .unwrap_or_else(|e| panic!("Unable to convert {} to u32: {}", s, e))
         })
         .collect()
 }
 
-fn find_noun_verb(program: Vec<usize>, expected: usize) -> Option<(usize, usize)> {
+fn find_noun_verb(program: &Vec<i32>, expected: i32) -> Option<(i32, i32)> {
     for i in 0..99 {
         for j in 0..99 {
             let mut p2_in = program.clone();
             p2_in[1] = i;
             p2_in[2] = j;
 
-            if Program::new(&mut p2_in)
-                .run()
-                .memory()
-                .get(0)
-                .unwrap()
-                .clone()
-                == expected
-            {
+            Program::new(&mut p2_in).run();
+
+            if *p2_in.get(0).expect("get(0)") == expected {
                 return Some((i, j));
             }
         }
@@ -101,10 +39,11 @@ fn main() {
     let mut p1_in = input.clone();
     p1_in[1] = 12;
     p1_in[2] = 2;
-    let program = Program::new(&mut p1_in).run();
-    println!("Program output is: {}", program.memory().get(0).unwrap());
 
-    let pair = find_noun_verb(input, 19690720).unwrap();
+    Program::new(&mut p1_in).run();
+    println!("Program output is: {}", p1_in.get(0).expect("get(0)"));
+
+    let pair = find_noun_verb(&input, 19_690_720).unwrap();
     println!("Noun and verb result: {}", 100 * pair.0 + pair.1);
 }
 
@@ -124,6 +63,9 @@ mod test {
             ),
         ]
         .iter_mut()
-        .for_each(|(input, out)| assert_eq!(Program::new(input).run().memory(), out))
+        .for_each(|(input, out): &mut (Vec<i32>, Vec<i32>)| {
+            Program::new(input).run();
+            assert_eq!(input, out);
+        });
     }
 }
