@@ -1,5 +1,3 @@
-#![feature(hash_set_entry)]
-
 use std::cell::RefCell;
 use std::cmp::Ord;
 use std::collections::BTreeSet;
@@ -162,7 +160,7 @@ impl<T: Eq + Clone + Ord> Tree<T> {
             let from_last = from_path.get(from_path.len() - i).unwrap();
             let to_last = to_path.get(to_path.len() - i).unwrap();
 
-            if (from_last != to_last) {
+            if from_last != to_last {
                 break;
             }
             i += 1;

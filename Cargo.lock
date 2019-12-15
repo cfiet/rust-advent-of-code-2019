@@ -55,6 +55,14 @@ name = "day6"
 version = "0.1.0"
 
 [[package]]
+name = "day7"
+version = "0.1.0"
+dependencies = [
+ "intcode 0.1.0",
+ "permutations 0.1.0",
+]
+
+[[package]]
 name = "either"
 version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -67,6 +75,10 @@ version = "0.1.0"
 name = "memchr"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "permutations"
+version = "0.1.0"
 
 [metadata]
 "checksum ascii 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bbf56136a5198c7b01a49e3afcbef6cf84597273d298f54432926024107b0109"

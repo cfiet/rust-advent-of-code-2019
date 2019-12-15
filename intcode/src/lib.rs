@@ -20,6 +20,11 @@ impl<'a> Program<'a> {
         }
     }
 
+    pub fn add_input_value(mut self, input: i32) -> Self {
+        self.input.push_back(input);
+        self
+    }
+
     pub fn add_input(mut self, input: &[i32]) -> Self {
         input.iter().for_each(|v| self.input.push_back(*v));
         self
