@@ -163,7 +163,7 @@ fn find_intesections(wire1: &Vec<Section>, wire2: &Vec<Section>) -> Vec<Intersec
         .collect()
 }
 
-fn find_closest_start(intesections: &Vec<Intersection>) -> Intersection {
+fn find_closest_start(intesections: &[Intersection]) -> Intersection {
     intesections.iter().fold(Intersection::empty(), |acc, i| {
         let dist = i.pos.x.abs() + i.pos.y.abs();
         if dist < acc.dist {
@@ -174,7 +174,7 @@ fn find_closest_start(intesections: &Vec<Intersection>) -> Intersection {
     })
 }
 
-fn find_shortest_start(intersections: &Vec<Intersection>) -> Intersection {
+fn find_shortest_start(intersections: &[Intersection]) -> Intersection {
     intersections.iter().fold(Intersection::empty(), |acc, i| {
         if i.dist < acc.dist {
             *i

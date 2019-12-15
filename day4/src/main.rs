@@ -12,7 +12,7 @@ fn check_number_part1(v: i32) -> bool {
         };
     }
 
-    return consecutive;
+    consecutive
 }
 
 fn check_number_part2(v: i32) -> bool {
@@ -38,15 +38,19 @@ fn check_number_part2(v: i32) -> bool {
         }
     }
 
-    return consecutive || repeted_count == 1;
+    consecutive || repeted_count == 1
 }
 
 fn main() {
-    let c1 = (272091..815432).filter(|v| check_number_part1(*v)).count();
+    let c1 = (272_091..815_432)
+        .filter(|v| check_number_part1(*v))
+        .count();
 
     println!("Matching: {}", c1);
 
-    let c2 = (272091..815432).filter(|v| check_number_part2(*v)).count();
+    let c2 = (272_091..815_432)
+        .filter(|v| check_number_part2(*v))
+        .count();
 
     println!("Matching: {}", c2);
 }

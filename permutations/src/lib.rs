@@ -1,4 +1,3 @@
-use std::clone::Clone;
 use std::iter::Iterator;
 
 pub struct UniquePermutations<'a, V> {
@@ -27,7 +26,7 @@ impl<'a, V> UniquePermutations<'a, V> {
                 .iter()
                 .enumerate()
                 .filter(|(idx, _)| idx != current)
-                .map(|(_, v)| v.clone())
+                .map(|(_, v)| *v)
                 .collect();
 
             Some((n, 0))
@@ -39,7 +38,9 @@ impl<'a, V> UniquePermutations<'a, V> {
             let last = self.stack.last();
             if last.is_some() && last.unwrap().1 >= last.unwrap().0.len() {
                 self.stack.pop();
-                self.stack.last_mut().map(|(_, curr)| *curr += 1);
+                if let Some((_, curr)) = self.stack.last_mut() {
+                    *curr += 1;
+                }
             }
             if self.stack.is_empty() || self.stack.len() == self.len {
                 break;
@@ -48,7 +49,9 @@ impl<'a, V> UniquePermutations<'a, V> {
             match self.next_stack_item() {
                 None => {
                     self.stack.pop();
-                    self.stack.last_mut().map(|(_, curr)| *curr += 1);
+                    if let Some((_, curr)) = self.stack.last_mut() {
+                        *curr += 1;
+                    }
                 }
                 Some(next_stack) => {
                     self.stack.push(next_stack);
@@ -75,7 +78,9 @@ impl<'a, V> Iterator for UniquePermutations<'a, V> {
             .flatten()
             .collect();
 
-        self.stack.last_mut().map(|(_, current)| *current += 1);
+        if let Some((_, current)) = self.stack.last_mut() {
+            *current += 1
+        }
 
         Some(next_item)
     }

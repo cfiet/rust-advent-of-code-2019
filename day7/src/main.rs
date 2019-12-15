@@ -1,7 +1,6 @@
 extern crate intcode;
 extern crate permutations;
 
-use std::clone::Clone;
 use std::fs::read_to_string;
 
 use intcode::Program;
@@ -11,7 +10,7 @@ const INPUT_PATH: &str = "day7/data/input.txt";
 
 fn read_input() -> Result<Vec<i32>, std::io::Error> {
     let program = read_to_string(INPUT_PATH)?
-        .split(",")
+        .split(',')
         .map(|v| v.parse::<i32>().expect("i32::parse"))
         .collect::<Vec<i32>>();
 
@@ -36,11 +35,7 @@ fn main() {
         .collect::<Vec<i32>>()
         .unique_permutations()
         .map(|permutation| {
-            let phase_settings = permutation
-                .iter()
-                .cloned()
-                .map(|v| *v)
-                .collect::<Vec<i32>>();
+            let phase_settings = permutation.iter().cloned().copied().collect::<Vec<i32>>();
 
             run_amplifiers(&prog, &phase_settings)
         })

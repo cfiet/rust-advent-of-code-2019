@@ -166,7 +166,7 @@ impl<T: Eq + Clone + Ord> Tree<T> {
             i += 1;
         }
 
-        return from_path.len() + to_path.len() - 2 * i;
+        from_path.len() + to_path.len() - 2 * i
     }
 }
 
